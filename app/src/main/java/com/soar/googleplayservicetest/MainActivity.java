@@ -11,6 +11,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,8 +45,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private static final int REQUEST_CODE_AUTOCOMPLETE = 1;
 
     private TextView mPlaceDetailsText;
-
     private TextView mPlaceAttribution;
+    private EditText mEditLat = null;
+    private EditText mEditLon = null;
+    private EditText mEditRadius = null;
+    private Button mBtnFind = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,19 +67,50 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         openButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //openAutocompleteActivity();
-                SearchNearbyPlaceAsyncTask radarSearchAsyncTask = new SearchNearbyPlaceAsyncTask("-33.8670522,151.1957362", "500");
-                List<String> types = new ArrayList<String>();
-                types.add("food");
-                radarSearchAsyncTask.addTypes(types);
-                radarSearchAsyncTask.execute();
+                openAutocompleteActivity();
+//                SearchNearbyPlaceAsyncTask radarSearchAsyncTask = new SearchNearbyPlaceAsyncTask("25.04,121.55", "500");
+//                List<String> types = new ArrayList<String>();
+//                types.add("food");
+//                radarSearchAsyncTask.addTypes(types);
+//                radarSearchAsyncTask.execute();
             }
         });
 
         // Retrieve the TextViews that will display details about the selected place.
         mPlaceDetailsText = (TextView) findViewById(R.id.place_details);
         mPlaceAttribution = (TextView) findViewById(R.id.place_attribution);
+
+
+        initView();
     }
+
+    private void initView() {
+        mEditLat = (EditText)findViewById(R.id.edit_lat);
+        mEditLon = (EditText)findViewById(R.id.edit_long);
+        mEditRadius = (EditText)findViewById(R.id.edit_radius);
+        mBtnFind = (Button)findViewById(R.id.btn_find);
+
+        if (mBtnFind != null) {
+            mBtnFind.setEnabled(false);
+            mBtnFind.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String latitude = mEditLat.getText().toString();
+                    String longitude = mEditLon.getText().toString();
+                    String radius = mEditRadius.getText().toString();
+
+                    SearchNearbyPlaceAsyncTask radarSearchAsyncTask = new SearchNearbyPlaceAsyncTask(latitude + "," + longitude , radius);
+                    List<String> types = new ArrayList<String>();
+                    types.add("food");
+                    radarSearchAsyncTask.addTypes(types);
+                    radarSearchAsyncTask.setContext(MainActivity.this);
+                    radarSearchAsyncTask.setGoogleApiClient(mGoogleApiClient);
+                    radarSearchAsyncTask.execute();
+                }
+            });
+        }
+    }
+
 
     @Override
     protected void onStart() {
@@ -92,7 +127,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     public void onConnected(Bundle bundle) {
         Log.d(TAG, "onConnected");
-
+        if (mBtnFind != null) {
+            mBtnFind.setEnabled(true);
+        }
         LatLngBounds bounds = new LatLngBounds.Builder().include(new LatLng(120f, 23f)).build();
         String query = " ";
         PendingResult<AutocompletePredictionBuffer> autocompletePredictionBufferResult =
@@ -190,6 +227,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 } else {
                     mPlaceAttribution.setText("");
                 }
+                mEditLat.setText(String.valueOf(place.getLatLng().latitude));
+                mEditLon.setText(String.valueOf(place.getLatLng().longitude));
             } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
                 Status status = PlaceAutocomplete.getStatus(this, data);
                 Log.e(TAG, "Error: Status = " + status.toString());
